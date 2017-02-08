@@ -3,12 +3,10 @@ Management of Mountebank installation.
 Can detect Mountebank installed in the system and also download and setup a standalone distribution
 """
 
-from functools import lru_cache
 import logging
 import os
 import subprocess
 import tarfile
-import urllib
 
 
 CACHE_DIR = os.path.expanduser('~/.cache/mountepy')
@@ -17,8 +15,7 @@ MB_INSTALL_CHECK_CMD = ['mb', 'help']
 _log = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 
-@lru_cache(1)
-def get_mb_command():
+def get_mb_command(auto_install=False):
     """Gets the command to start a Mountebank server in the system.
     Ensures that either Mountebank installation or standalone distribution is available.
     Will trigger Mountebank download if necessary.
@@ -28,7 +25,7 @@ def get_mb_command():
     """
     if _check_mb_install():
         return ['mb']
-    else:
+    elif auto_install:
         if not os.path.exists(CACHE_DIR):
             _setup_standalone()
         mb_dir = _get_mb_dir(CACHE_DIR)
@@ -37,6 +34,9 @@ def get_mb_command():
         mb_command = [node_path, mb_exe_path]
         _log.debug('Standalone Mountebank command set to %s', mb_command)
         return mb_command
+    else:
+        raise OSError(
+            'Mountebank is not installed, try install with "npm install"')
 
 
 def _setup_standalone():
@@ -44,8 +44,12 @@ def _setup_standalone():
     Standalone distribution also contains NodeJS.
     """
     _log.info('Setting up a standalone Mountebank.')
-    mb_archive_path, _ = urllib.request.urlretrieve(
-        'https://s3.amazonaws.com/mountebank/v1.4/mountebank-v1.4.3-linux-x64.tar.gz')
+    try:
+        from urllib.request import urlretrieve
+    except ImportError:
+        from urllib import urlretrieve
+    mb_archive_path, _ = urlretrieve(
+        'https://s3.amazonaws.com/mountebank/v1.8/mountebank-v1.8.0-linux-x64.tar.gz')
     mb_tar = tarfile.open(mb_archive_path, mode='r:gz')
     mb_tar.extractall(CACHE_DIR)
 
@@ -59,15 +63,21 @@ def _check_mb_install():
         bool: True if Mountebank is installed, False otherwise.
     """
     try:
-        subprocess.check_call(
-            MB_INSTALL_CHECK_CMD,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL)
-        _log.debug('Detected normal Mountebank installation.')
-        return True
-    except FileNotFoundError:
-        _log.debug('No normal Mountebank installation found.')
-        return False
+        from subprocess import DEVNULL # py3k
+    except ImportError:
+        DEVNULL = open(os.devnull, 'wb')
+
+    with DEVNULL:
+        try:
+            subprocess.check_call(
+                MB_INSTALL_CHECK_CMD,
+                stdout=DEVNULL,
+                stderr=DEVNULL)
+            _log.debug('Detected normal Mountebank installation.')
+            return True
+        except OSError:
+            _log.debug('No normal Mountebank installation found.')
+            return False
 
 
 def _get_mb_dir(cache_dir):

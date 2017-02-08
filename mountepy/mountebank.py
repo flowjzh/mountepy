@@ -4,6 +4,7 @@ Abstractions representing aspects of Mountebank.
 
 import collections
 import time
+from concurrent.futures import TimeoutError
 
 import dateutil.parser
 import port_for
@@ -13,7 +14,7 @@ from .http_service import HttpService, wait_for_port
 from .mb_mgmt import get_mb_command
 
 
-class MountebankWrapper:
+class MountebankWrapper(object):
     """A wrapper around the Mountebank API. Meant to be used as a superclass.
     """
 
@@ -133,7 +134,7 @@ class Mountebank(MountebankWrapper):
     """
     def __init__(self, port=None):
         process = HttpService(get_mb_command() + ['--mock', '--port', '{port}'], port)
-        super().__init__('localhost', process.port)
+        super(Mountebank, self).__init__('localhost', process.port)
         self.process = process
 
     def start(self):
@@ -143,6 +144,10 @@ class Mountebank(MountebankWrapper):
     def stop(self):
         """Stops the Mountebank process"""
         self.process.stop()
+
+    def wait(self):
+        """Wait the Mountebank process"""
+        self.process.wait()
 
 
 class ExistingMountebank(MountebankWrapper):
@@ -228,24 +233,5 @@ class Imposter:
 ImposterRequest = collections.namedtuple(
     'ImposterRequest',
     'body, headers, method, path, query, request_from, timestamp')
-ImposterRequest.__doc__ = """Data of a request made on an imposter.
-
-Attributes:
-    body (str): Request's body. Can be any valid JSON (this includes raw values)
-    headers (dict): HTTP headers.
-    method (str): HTTP method.
-    path (str): Request's path (e.g. "/bla/1" or "/").
-    query (dict): Query arguments (after "?" in a URL).
-    request_from (str): Request's source address.
-    timestamp (`datetime.datetime`): Time at which the request was made.
-"""
 
 HttpStub = collections.namedtuple('HttpStub', ['method', 'path', 'status_code', 'response'])
-HttpStub.__doc__ = """A configuration for a simple Mountebank impostor, not including the port.
-
-Attributes:
-    method (str): HTTP method to which the stub will answer.
-    path (str): Request's path (e.g. "/bla/1" or "/")
-    status_code (int): Status code that will be returned by the stub.
-    response (str): Stub will send it in response to a request matching other parameters.
-"""

@@ -1,12 +1,10 @@
 mountepy
 ========
 
-.. image:: https://snap-ci.com/butla/mountepy/branch/master/build_image
-    :target: https://snap-ci.com/butla/mountepy/branch/master
-.. image:: https://coveralls.io/repos/butla/mountepy/badge.svg?branch=master&service=github
-    :target: https://coveralls.io/github/butla/mountepy?branch=master
-.. image:: https://requires.io/github/butla/mountepy/requirements.svg?branch=master
-    :target: https://requires.io/github/butla/mountepy/requirements/?branch=master
+Fork Notes
+------------
+
+This fork is aimed to maintain a Python 2.7 compatable version of mountepy 
 
 Utilities for creating HTTP (micro)service tests. Based on `Mountebank <http://www.mbtest.org/>`_.
 
@@ -20,7 +18,7 @@ need.
   but I like py.test).
 - Enables fast and reliable end-to-end testing of microservices. They
   won't be aware that they are in some testing mode.
-- Tested on Python 3.4, Ubuntu 14 x64.
+- Tested on Python 3.4, Ubuntu 14 x64. (no longer ensured with this fork)
 - Planned features in the road map below.
   If you have suggestions, just post them as Github issues.
   Pull requests are also welcome :)

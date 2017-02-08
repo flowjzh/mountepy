@@ -4,6 +4,7 @@ Abstractions for management of HTTP service processes.
 
 import atexit
 import concurrent.futures
+from concurrent.futures import TimeoutError
 import logging
 import os
 import signal
@@ -25,16 +26,18 @@ def wait_for_port(port, host='localhost', timeout=5.0):
     Raises:
         TimeoutError: The port isn't accepting connection after time specified in `timeout`.
     """
-    start_time = time.perf_counter()
+    start_time = time.time()
     while True:
         try:
-            with socket.create_connection((host, port)):
-                break
-        except OSError:
+            sock = socket.create_connection((host, port))
+            sock.close()
+            break;
+        except socket.error:
             time.sleep(0.01)
-            if time.perf_counter() - start_time >= timeout:
-                raise TimeoutError('Waited too long for the port {} on host {} to start accepting '
-                                   'connections.'.format(port, host))
+            if time.time() - start_time >= timeout:
+                raise TimeoutError(
+                    'Waited too long for the port {} on host {} to start accepting '
+                    'connections.'.format(port, host))
 
 
 class HttpService:
@@ -97,13 +100,22 @@ class HttpService:
         Raises:
             `subprocess.TimeoutExpired`: If the service process didn't start in time.
         """
-        atexit.unregister(self.stop)
+        if hasattr(atexit, 'unregister'):
+            atexit.unregister(self.stop)
+        elif (self.stop, (), {}) in atexit._exithandlers:
+            atexit._exithandlers.remove((self.stop, (), {}))
         # Sending SIGINT (ctrl+C) because Python handles it by default.
         # Terminate could also be sent, but if the service process spawned
         # another process, then it would need to intercept SIGTERM if we'd
         # want to have a multiprocess coverage report.
-        self._service_proc.send_signal(signal.SIGINT)
-        self._service_proc.wait(timeout)
+        try:
+            self._service_proc.send_signal(signal.SIGINT)
+            self._service_proc.wait()
+        except OSError:
+            pass
+
+    def wait(self):
+        self._service_proc and self._service_proc.wait()
 
     def __enter__(self):
         self.start()
