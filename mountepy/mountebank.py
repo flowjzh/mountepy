@@ -132,8 +132,11 @@ class Mountebank(MountebankWrapper):
     Args:
         port (int): Port on which Mountebank is listening for imposter configuration commands.
     """
-    def __init__(self, port=None):
-        process = HttpService(get_mb_command() + ['--mock', '--port', '{port}'], port)
+    def __init__(self, port=None, allow_injection=False):
+        args = ['--mock', '--port', '{port}']
+        if allow_injection:
+            args.append('--allowInjection')
+        process = HttpService(get_mb_command() + args, port)
         super(Mountebank, self).__init__('localhost', process.port)
         self.process = process
 
